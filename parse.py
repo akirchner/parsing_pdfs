@@ -4,13 +4,11 @@ import re
 
 files = next(os.walk('pdfs'))[2]
 
-os.mkdir('txts')
+if not os.path.isdir('txts'):
+    os.mkdir('txts')
 
-county_match = re.compile('^In\s([A-Z]+)\sCo[\.?,unty]\s?[:,;]?\s$', flags=re.IGNORECASE)
-            
-
-with open('output.csv') as f:
-    writer = csv.DictWriter(f, fieldnames=['TOWN', 'RANG', 'DIR', 'SECT', 'COUN_UC', 'EMS', 'SERVICE', 'LEVEL', 'REGION'])
+with open('output.csv', 'w', newline='') as f:
+    writer = csv.DictWriter(f, fieldnames=['TOWN', 'RANG', 'DIR', 'SECT', 'COUN_UC', 'EMS', 'SERVICE', 'LEVEL', 'REGION'], extrasaction='ignore', restval=None)
     writer.writeheader()
 
     for file in files:
@@ -20,68 +18,61 @@ with open('output.csv') as f:
 
         data = {}
 
-        counties = []
-
-        with open('\"txts/' + file[0:-4] + '.txt\"') as txt:
+        with open('txts/' + file[0:-4] + '.txt') as txt:
             lines = txt.readlines()
 
-            for idx, line in enumerate(lines):
-                if line[0:17].upper() == "AMBULANCE SERVICE":
-                    if data['SERVICE'] is not None:
+            for line in lines:
+                if twp_search := re.search('^\s*T([0-9]+)[A-Z]R([0-9]+)([A-Z])\s*(.*)$', line, flags=re.IGNORECASE):
+                    if not all (key in data for key in ['EMS', 'SERVICE', 'LEVEL', 'REGION', 'COUN_UC']):
+                        parsingError = True
+
+                    data['TOWN'] = twp_search.group(1)
+                    data['RANG'] = twp_search.group(2)
+                    data['DIR'] = twp_search.group(3)
+
+                    if len(rest := twp_search.group(4)) > 0:
+                        pass
+                    else:
+                        for i in range(1, 37):
+                            data['SECT'] = i
+                            writer.writerow(data)
+                
+                elif county_search := re.search('^\s*In\s*([A-Z]+(\s*[A-Z]+)*)\s*Co(\.|(unty))?\s*[:;]?\s*$', line, flags=re.IGNORECASE):
+                    data['COUN_UC'] = county_search.group(1).upper()
+                    if not all (key in data for key in ['EMS', 'SERVICE', 'LEVEL', 'REGION']):
+                        parsingError = True
+                    
+                elif line[0:17].upper() == "AMBULANCE SERVICE":
+                    if 'SERVICE' in data:
                         parsingError = True
 
                     service = line.split(':', 1)[1]
                     service = service.strip()
                     data['SERVICE'] = service
+                
                 elif line[0:4].upper() == "EMS#":
-                    if data['EMS'] is not None:
+                    if 'EMS' in data:
                         parsingError = True
 
                     ems = line.split(':', 1)[1]
-                    ems = service.strip()
+                    ems = ems.strip()
                     data['EMS'] = ems
+                
                 elif line[0:6].upper() == "REGION":
-                    if data['REGION'] is not None:
+                    if 'REGION' in data:
                         parsingError = True
 
                     region = line.split(':', 1)[1]
-                    region = service.strip()
+                    region = region.strip()
                     data['REGION'] = region
+                
                 elif line[0:13].upper() == "SERVICE LEVEL":
-                    if data['LEVEL'] is not None:
+                    if 'LEVEL' in data:
                         parsingError = True
 
                     service_level = line.split(':', 1)[1]
-                    service_level = service.strip()
+                    service_level = service_level.strip()
                     data['LEVEL'] = service_level
-                else:
-                    county_search = re.search('^In\s([A-Z]+)\sCo[\.?,unty]\s?[:,;]?\s$', flags=re.IGNORECASE)
-
-                    if county_search: 
-                        county_name = county_search.group(1)
-                        if not all (key in data for key in ['EMS', 'SERVICE', 'LEVEL', 'REGION']):
-                            parsingError = True
-                    
-                        break
-
-            idx += 1
-            line = lines[idx]
-
-            twp_data = []
-
-            while not county_match.match(line):
-                line_data = {}
-
-                twp_search = re.search('^\sT([0-9]+)[A-Z]R([0-9]+)([A-Z])(.*)$', flags=re.IGNORECASE)
-
-                if twp_search:
-                    line_data['TOWN'] = twp_search.group(1)
-                    line_data['RANG'] = twp_search.group(2)
-                    line_data['DIR'] = twp_search.group(3)
-                    line_data['COUN_UC'] = county_name.upper()
-
-                    twp_data.append()
-
                 
 
         writer.writerow(data)
