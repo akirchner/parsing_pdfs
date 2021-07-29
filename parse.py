@@ -24,7 +24,7 @@ with open('output.csv', 'w', newline='') as f:
             lines = txt.readlines()
 
             for line in lines:
-                if twp_search := re.search('^\s*T([0-9]+)[A-Z]R([0-9]+)([A-Z])\s*[-–—]?\s*sections?\s*(.*)\s*$', line, flags=re.IGNORECASE):
+                if twp_search := re.search('^\s*T([0-9]+)[A-Z]R([0-9]+)([A-Z])\s*[-–—]?\s*(?:sec)?\s*(.*)\s*$', line, flags=re.IGNORECASE):
                     data['TOWN'] = twp_search.group(1)
                     data['RANG'] = twp_search.group(2)
                     data['DIR'] = twp_search.group(3)
