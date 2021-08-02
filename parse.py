@@ -24,7 +24,10 @@ with open('output.csv', 'w', newline='') as f:
             lines = txt.readlines()
 
             for line in lines:
-                if twp_search := re.search('^\s*T([0-9]+)[A-Z]R([0-9]+)([A-Z])\s*[-–—]?\s*(?:sec)?\s*(.*)\s*$', line, flags=re.IGNORECASE):
+                twp_search = re.search('^\s*T([0-9]+)[A-Z]R([0-9]+)([A-Z])\s*[-–—]?\s*(?:sec)?\s*(.*)\s*$', line, flags=re.IGNORECASE)
+                county_search = re.search('^\s*In\s*([A-Z]+(\s*[A-Z]+)*)\s*Co(\.|(unty))?\s*[:;]?\s*$', line, flags=re.IGNORECASE)
+
+                if twp_search:
                     data['TOWN'] = twp_search.group(1)
                     data['RANG'] = twp_search.group(2)
                     data['DIR'] = twp_search.group(3)
@@ -32,7 +35,8 @@ with open('output.csv', 'w', newline='') as f:
                     if not all (key in data for key in ['EMS', 'SERVICE', 'LEVEL', 'REGION', 'COUN_UC']):
                         print("Parsing Error in " + file + ": Township entry found without all prerequisite data: " + line)
 
-                    if len(rest := twp_search.group(4)) > 0:
+                    rest = twp_search.group(4)
+                    if len(rest) > 0:
                         if any (word in rest for word in ['except', 'excluding', 'but', 'not', 'all', '-']):
                             print("Parsing Error in " + file + ": special case, not parseable: " + line)
                         else:
@@ -55,7 +59,7 @@ with open('output.csv', 'w', newline='') as f:
                             data['SECT'] = i
                             writer.writerow(data)
                 
-                elif county_search := re.search('^\s*In\s*([A-Z]+(\s*[A-Z]+)*)\s*Co(\.|(unty))?\s*[:;]?\s*$', line, flags=re.IGNORECASE):
+                elif county_search:
                     data['COUN_UC'] = county_search.group(1).upper()
                     if not all (key in data for key in ['EMS', 'SERVICE', 'LEVEL', 'REGION']):
                         print("Parsing Error in " + file + ": County entry found without all prerequisite data: " + line)
@@ -96,7 +100,7 @@ with open('output.csv', 'w', newline='') as f:
                     if not all (key in data for key in ['EMS', 'SERVICE', 'LEVEL', 'REGION', 'COUN_UC', 'TOWN', 'RANG', 'DIR']):
                         print("Parsing Error in " + file + ": Possible data loss, sections with no prerequisite data: " + line)
 
-                    if any (word in rest for word in ['except', 'excluding', 'but', 'not', 'all', '-']):
+                    if any (word in line for word in ['except', 'excluding', 'but', 'not', 'all', '-']):
                         print("Parsing Error in " + file + ": possible special case, not parseable: " + line)
                     else:
                         parts = [x for x in re.split('\s+|,', line)]
